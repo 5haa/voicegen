@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Real-Time Voice Generation</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            padding: 40px;
+            max-width: 600px;
+            width: 100%;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 2em;
+            text-align: center;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 0.9em;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 0.8em;
+            font-weight: bold;
+            margin-left: 10px;
+        }
+
+        .status-configured {
+            background: #10b981;
+            color: white;
+        }
+
+        .status-not-configured {
+            background: #ef4444;
+            color: white;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #333;
+            font-weight: 600;
+        }
+
+        textarea {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-size: 16px;
+            font-family: inherit;
+            resize: vertical;
+            min-height: 120px;
+            transition: border-color 0.3s;
+        }
+
+        textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-size: 16px;
+            background: white;
+            cursor: pointer;
+            transition: border-color 0.3s;
+        }
+
+        select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+
+        button {
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            margin-top: 10px;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .audio-player {
+            margin-top: 20px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            display: none;
+        }
+
+        .audio-player audio {
+            width: 100%;
+            margin-top: 10px;
+        }
+
+        .audio-player h3 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 1.1em;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            margin-top: 20px;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .error-message {
+            background: #fee;
+            color: #c33;
+            padding: 12px;
+            border-radius: 8px;
+            margin-top: 15px;
+            display: none;
+        }
+
+        .success-message {
+            background: #efe;
+            color: #3c3;
+            padding: 12px;
+            border-radius: 8px;
+            margin-top: 15px;
+            display: none;
+        }
+
+        .cost-info {
+            text-align: center;
+            color: #666;
+            font-size: 0.85em;
+            margin-top: 20px;
+            padding: 12px;
+            background: #f0f4ff;
+            border-radius: 8px;
+        }
+
+        .cost-info strong {
+            color: #667eea;
+        }
+
+        .char-counter {
+            text-align: right;
+            font-size: 0.85em;
+            color: #666;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎙️ Voice Generation</h1>
+        <p class="subtitle">
+            English Text-to-Speech powered by Cloudflare Workers AI
+            <span id="statusBadge" class="status-badge">Checking...</span>
+        </p>
+
+        <form id="voiceForm">
+            <div class="form-group">
+                <label for="text">Enter Text to Convert:</label>
+                <textarea 
+                    id="text" 
+                    name="text" 
+                    placeholder="Type or paste the text you want to convert to speech..."
+                    maxlength="5000"
+                    required
+                ></textarea>
+                <div class="char-counter">
+                    <span id="charCount">0</span> / 5000 characters
+                </div>
+            </div>
+
+            <button type="submit" id="generateBtn">
+                🎵 Generate Voice
+            </button>
+        </form>
+
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <p style="margin-top: 10px; color: #666;">Generating voice...</p>
+        </div>
+
+        <div class="error-message" id="errorMessage"></div>
+        <div class="success-message" id="successMessage"></div>
+
+        <div class="audio-player" id="audioPlayer">
+            <h3>🔊 Generated Audio:</h3>
+            <audio controls id="audioElement"></audio>
+            <button onclick="downloadAudio()" style="margin-top: 10px; background: #10b981;">
+                💾 Download Audio
+            </button>
+        </div>
+
+        <div class="cost-info">
+            💰 <strong>Ultra-low cost:</strong> Only $0.0002 per minute of audio generated
+        </div>
+
+        <div style="text-align: center; margin-top: 20px; padding-top: 20px; border-top: 2px solid #e0e0e0;">
+            <a href="/" style="color: #667eea; text-decoration: none; font-weight: 600; font-size: 1.1em;">
+                🤖 Try the AI Voice Agent →
+            </a>
+            <p style="color: #666; font-size: 0.85em; margin-top: 5px;">
+                Real-time voice conversation with Gemini AI!
+            </p>
+        </div>
+    </div>
+
+    <script>
+        let currentAudioUrl = null;
+
+        // Check API health status
+        async function checkHealth() {
+            try {
+                const response = await fetch('/api/health');
+                const data = await response.json();
+                const badge = document.getElementById('statusBadge');
+                
+                if (data.configured) {
+                    badge.textContent = '✓ Ready';
+                    badge.className = 'status-badge status-configured';
+                } else {
+                    badge.textContent = '⚠ Not Configured';
+                    badge.className = 'status-badge status-not-configured';
+                }
+            } catch (error) {
+                console.error('Health check failed:', error);
+            }
+        }
+
+        // Update character counter
+        document.getElementById('text').addEventListener('input', function() {
+            document.getElementById('charCount').textContent = this.value.length;
+        });
+
+        // Handle form submission
+        document.getElementById('voiceForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+
+            const text = document.getElementById('text').value;
+            const language = 'EN';  // Default to English
+
+            // Show loading
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('generateBtn').disabled = true;
+            document.getElementById('errorMessage').style.display = 'none';
+            document.getElementById('successMessage').style.display = 'none';
+            document.getElementById('audioPlayer').style.display = 'none';
+
+            try {
+                const response = await fetch('/api/generate-voice', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ text, language })
+                });
+
+                if (response.ok) {
+                    const audioBlob = await response.blob();
+                    const audioUrl = URL.createObjectURL(audioBlob);
+                    
+                    // Clean up old URL
+                    if (currentAudioUrl) {
+                        URL.revokeObjectURL(currentAudioUrl);
+                    }
+                    currentAudioUrl = audioUrl;
+
+                    // Display audio player
+                    const audioElement = document.getElementById('audioElement');
+                    audioElement.src = audioUrl;
+                    document.getElementById('audioPlayer').style.display = 'block';
+                    
+                    // Show success message
+                    document.getElementById('successMessage').textContent = '✓ Voice generated successfully!';
+                    document.getElementById('successMessage').style.display = 'block';
+                    
+                    // Auto-play
+                    audioElement.play();
+                } else {
+                    const error = await response.json();
+                    throw new Error(error.error || 'Failed to generate voice');
+                }
+            } catch (error) {
+                document.getElementById('errorMessage').textContent = '✗ Error: ' + error.message;
+                document.getElementById('errorMessage').style.display = 'block';
+                console.error('Error:', error);
+            } finally {
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('generateBtn').disabled = false;
+            }
+        });
+
+        function downloadAudio() {
+            if (currentAudioUrl) {
+                const a = document.createElement('a');
+                a.href = currentAudioUrl;
+                a.download = 'generated_voice.mp3';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+            }
+        }
+
+        // Initialize
+        checkHealth();
+    </script>
+</body>
+</html>
+
+

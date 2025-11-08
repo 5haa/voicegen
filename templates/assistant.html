@@ -1,0 +1,732 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Language Tutor</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            color: white;
+        }
+
+        .container {
+            max-width: 600px;
+            width: 100%;
+            text-align: center;
+        }
+
+        .header {
+            margin-bottom: 40px;
+        }
+
+        h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .subtitle {
+            color: #a0a0a0;
+            font-size: 1em;
+        }
+
+        .agent-circle {
+            width: 250px;
+            height: 250px;
+            border-radius: 50%;
+            margin: 0 auto 40px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 20px 60px rgba(102, 126, 234, 0.4);
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .agent-circle.listening {
+            animation: pulse 2s infinite;
+            box-shadow: 0 20px 80px rgba(59, 130, 246, 0.6);
+        }
+
+        .agent-circle.thinking {
+            animation: rotate 2s linear infinite;
+            box-shadow: 0 20px 80px rgba(245, 158, 11, 0.6);
+        }
+
+        .agent-circle.speaking {
+            animation: wave 1s ease-in-out infinite;
+            box-shadow: 0 20px 80px rgba(139, 92, 246, 0.6);
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+
+        @keyframes rotate {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        @keyframes wave {
+            0%, 100% { transform: scale(1); }
+            25% { transform: scale(1.05); }
+            50% { transform: scale(1); }
+            75% { transform: scale(1.05); }
+        }
+
+        .agent-icon {
+            font-size: 100px;
+        }
+
+        .status-text {
+            font-size: 1.5em;
+            margin-bottom: 20px;
+            min-height: 36px;
+            color: #e0e0e0;
+        }
+
+        .transcript-display {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 20px;
+            min-height: 100px;
+            margin-bottom: 30px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .transcript-display.active {
+            border-color: #667eea;
+            background: rgba(102, 126, 234, 0.2);
+        }
+
+        .message {
+            margin-bottom: 15px;
+            padding: 12px 16px;
+            border-radius: 12px;
+            text-align: left;
+        }
+
+        .message.user {
+            background: rgba(59, 130, 246, 0.3);
+            margin-left: 20%;
+        }
+
+        .message.assistant {
+            background: rgba(139, 92, 246, 0.3);
+            margin-right: 20%;
+        }
+
+        .message .role {
+            font-weight: bold;
+            font-size: 0.85em;
+            opacity: 0.8;
+            margin-bottom: 4px;
+        }
+
+        .controls {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+
+        .control-btn {
+            padding: 15px 30px;
+            border: none;
+            border-radius: 50px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            backdrop-filter: blur(10px);
+            border: 2px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .control-btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .control-btn:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+        }
+
+        .control-btn.primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+        }
+
+        .control-btn.danger {
+            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+            border: none;
+        }
+
+        .info-box {
+            background: rgba(102, 126, 234, 0.2);
+            padding: 15px;
+            border-radius: 12px;
+            font-size: 0.9em;
+            color: #e0e0e0;
+            border: 1px solid rgba(102, 126, 234, 0.3);
+        }
+
+        .error-message {
+            background: rgba(239, 68, 68, 0.2);
+            color: #fca5a5;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            display: none;
+            border: 1px solid rgba(239, 68, 68, 0.3);
+        }
+
+        .nav-link {
+            margin-top: 20px;
+        }
+
+        .nav-link a {
+            color: #667eea;
+            text-decoration: none;
+            font-size: 0.9em;
+        }
+
+        .nav-link a:hover {
+            text-decoration: underline;
+        }
+
+        .conversation-history {
+            max-height: 200px;
+            overflow-y: auto;
+            margin-bottom: 15px;
+        }
+
+        .conversation-history::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .conversation-history::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+        }
+
+        .conversation-history::-webkit-scrollbar-thumb {
+            background: rgba(102, 126, 234, 0.5);
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>AI Language Tutor</h1>
+            <p class="subtitle">Practice languages with real-time voice conversation powered by Gemini AI</p>
+        </div>
+
+        <div class="error-message" id="errorMessage"></div>
+
+        <div class="agent-circle" id="agentCircle">
+            <span class="agent-icon" id="agentIcon">🤖</span>
+        </div>
+
+        <div class="status-text" id="statusText">
+            Click "Start Talking" to begin
+        </div>
+
+        <div class="controls">
+            <button class="control-btn primary" id="startBtn">
+                <span>🎤</span>
+                <span>Start Talking</span>
+            </button>
+            <button class="control-btn danger" id="stopBtn" disabled>
+                <span>⏹️</span>
+                <span>Stop</span>
+            </button>
+            <button class="control-btn" id="clearBtn">
+                <span>🗑️</span>
+                <span>Clear</span>
+            </button>
+        </div>
+
+        <div class="transcript-display" id="transcriptDisplay">
+            <div class="conversation-history" id="conversationHistory">
+                <div style="color: #999; padding: 20px;">
+                    Ready to practice! Start speaking to begin your language learning session.
+                </div>
+            </div>
+        </div>
+
+        <div class="info-box">
+            💡 <strong>Language Learning Tips:</strong> Speak naturally in any language, practice vocabulary, ask for translations, or request conversation practice. I'll respond with natural voice and adapt to your learning level!
+        </div>
+
+        <div class="nav-link">
+            <a href="/tts">← Text-to-Speech Generator</a>
+        </div>
+    </div>
+
+    <script>
+        let recognition = null;
+        let isListening = false;
+        let conversationHistory = [];
+        let isSpeaking = false;
+        let currentAudio = null;
+        let isActive = false;
+        let audioQueue = [];
+        let isPlayingQueue = false;
+
+        // Initialize Speech Recognition
+        function initSpeechRecognition() {
+            if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+                const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+                recognition = new SpeechRecognition();
+                recognition.continuous = false;
+                recognition.interimResults = true;
+                recognition.lang = 'en-US';  // Default language for speech recognition
+
+                recognition.onstart = function() {
+                    isListening = true;
+                    updateStatus('listening', 'Listening...');
+                };
+
+                recognition.onresult = function(event) {
+                    let interimTranscript = '';
+                    let finalTranscript = '';
+
+                    for (let i = event.resultIndex; i < event.results.length; i++) {
+                        const transcript = event.results[i][0].transcript;
+                        if (event.results[i].isFinal) {
+                            finalTranscript += transcript;
+                        } else {
+                            interimTranscript += transcript;
+                        }
+                    }
+
+                    // Interrupt AI speech only when actual speech is detected (not just noise)
+                    const detectedSpeech = (interimTranscript + finalTranscript).trim();
+                    if (detectedSpeech.length >= 2 && isSpeaking) {
+                        // Real speech detected with at least 2 characters - interrupt AI
+                        stopSpeaking();
+                    }
+
+                    if (finalTranscript) {
+                        handleUserMessage(finalTranscript.trim());
+                    }
+                };
+
+                recognition.onerror = function(event) {
+                    console.error('Speech recognition error:', event.error);
+                    if (event.error !== 'no-speech' && event.error !== 'aborted') {
+                        showError('Speech recognition error: ' + event.error);
+                    }
+                    if (isActive) {
+                        setTimeout(() => startListening(), 1000);
+                    }
+                };
+
+                recognition.onend = function() {
+                    isListening = false;
+                    // Only auto-restart if we're active and AI is NOT speaking
+                    if (isActive && !isSpeaking) {
+                        setTimeout(() => {
+                            if (!isSpeaking) { // Double check before restarting
+                                startListening();
+                            }
+                        }, 500);
+                    }
+                };
+
+                return true;
+            } else {
+                showError('Speech recognition not supported. Use Chrome or Edge.');
+                return false;
+            }
+        }
+
+        // Update status
+        function updateStatus(state, text) {
+            const circle = document.getElementById('agentCircle');
+            const statusText = document.getElementById('statusText');
+            const icon = document.getElementById('agentIcon');
+            
+            circle.className = 'agent-circle ' + state;
+            statusText.textContent = text;
+            
+            switch(state) {
+                case 'listening':
+                    icon.textContent = '🎤';
+                    break;
+                case 'thinking':
+                    icon.textContent = '🤔';
+                    break;
+                case 'speaking':
+                    icon.textContent = '🔊';
+                    break;
+                default:
+                    icon.textContent = '🤖';
+            }
+        }
+
+        // Start the agent
+        function startAgent() {
+            if (!recognition && !initSpeechRecognition()) {
+                return;
+            }
+
+            isActive = true;
+            document.getElementById('startBtn').disabled = true;
+            document.getElementById('stopBtn').disabled = false;
+            startListening();
+        }
+
+        // Stop the agent
+        function stopAgent() {
+            isActive = false;
+            isListening = false;
+            
+            if (recognition) {
+                recognition.stop();
+            }
+            
+            stopSpeaking();
+            
+            document.getElementById('startBtn').disabled = false;
+            document.getElementById('stopBtn').disabled = true;
+            updateStatus('', 'Stopped. Click "Start Talking" to resume.');
+        }
+
+        // Start listening
+        function startListening() {
+            // Don't start listening if AI is speaking or already listening
+            if (!isActive || isListening || isSpeaking) return;
+            
+            try {
+                recognition.lang = 'en-US';  // Default language for speech recognition
+                recognition.start();
+            } catch (error) {
+                console.error('Failed to start recognition:', error);
+            }
+        }
+
+        // Stop speaking
+        function stopSpeaking() {
+            if (currentAudio) {
+                currentAudio.pause();
+                currentAudio.currentTime = 0;
+                currentAudio = null;
+            }
+            audioQueue = [];
+            isPlayingQueue = false;
+            isSpeaking = false;
+        }
+
+        // Handle user message
+        async function handleUserMessage(message) {
+            if (!message) return;
+
+            // Stop listening immediately to prevent echo
+            if (recognition && isListening) {
+                recognition.stop();
+                isListening = false;
+            }
+
+            // Stop any ongoing speech immediately
+            stopSpeaking();
+
+            // Add user message to display
+            addMessage('user', message);
+            conversationHistory.push({ role: 'user', content: message });
+
+            // Update status
+            updateStatus('thinking', 'Thinking...');
+
+            try {
+                // Get AI response
+                const response = await fetch('/api/chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        message: message,
+                        history: conversationHistory
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to get AI response');
+                }
+
+                const data = await response.json();
+                const aiResponse = data.response;
+
+                // Add AI response to display
+                addMessage('assistant', aiResponse);
+                conversationHistory.push({ role: 'assistant', content: aiResponse });
+
+                // Speak the response
+                await speakResponse(aiResponse);
+
+            } catch (error) {
+                console.error('Error:', error);
+                showError('Error: ' + error.message);
+                if (isActive) {
+                    setTimeout(() => startListening(), 1000);
+                }
+            }
+        }
+
+        // Add message to display
+        function addMessage(role, content) {
+            const container = document.getElementById('conversationHistory');
+            
+            // Remove placeholder
+            if (container.children.length === 1 && container.children[0].style.color === 'rgb(153, 153, 153)') {
+                container.innerHTML = '';
+            }
+
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${role}`;
+            
+            const roleDiv = document.createElement('div');
+            roleDiv.className = 'role';
+            roleDiv.textContent = role === 'user' ? 'You' : 'AI';
+            
+            const contentDiv = document.createElement('div');
+            contentDiv.textContent = content;
+            
+            messageDiv.appendChild(roleDiv);
+            messageDiv.appendChild(contentDiv);
+            container.appendChild(messageDiv);
+            
+            // Scroll to bottom
+            container.scrollTop = container.scrollHeight;
+        }
+
+        // Speak AI response (with chunking for long text)
+        async function speakResponse(text) {
+            // Stop listening before AI starts speaking to prevent echo
+            if (recognition && isListening) {
+                recognition.stop();
+                isListening = false;
+            }
+            
+            updateStatus('speaking', 'Speaking...');
+            isSpeaking = true;
+
+            try {
+                // Default to English for TTS
+                const ttsLang = 'EN';
+
+                // Only chunk for very long texts (over 800 characters)
+                // Most tutor responses are under 1000 chars, so this avoids chunking delays
+                if (text.length > 800) {
+                    // Get chunks
+                    const chunkResponse = await fetch('/api/generate-voice-chunked', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ text: text, language: ttsLang })
+                    });
+
+                    if (chunkResponse.ok) {
+                        const chunkData = await chunkResponse.json();
+                        
+                        if (chunkData.chunks) {
+                            // Play chunks with parallel fetching for smoother playback
+                            await playChunksParallel(chunkData.chunks, ttsLang);
+                            return;
+                        }
+                    }
+                }
+
+                // Generate and play single audio (handles most responses)
+                const response = await fetch('/api/generate-voice', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ text: text, language: ttsLang })
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to generate speech');
+                }
+
+                const audioBlob = await response.blob();
+                await playAudio(audioBlob);
+                
+                // Finish speaking and wait before resuming listening
+                isSpeaking = false;
+                if (isActive && !isListening) {
+                    updateStatus('', 'Ready to listen...');
+                    // Wait longer to ensure audio output has finished
+                    setTimeout(() => {
+                        if (!isSpeaking && !isListening) {
+                            startListening();
+                        }
+                    }, 800);
+                }
+
+            } catch (error) {
+                console.error('Speech error:', error);
+                showError('Failed to generate speech');
+                isSpeaking = false;
+                if (isActive && !isListening) {
+                    setTimeout(() => {
+                        if (!isSpeaking && !isListening) {
+                            startListening();
+                        }
+                    }, 800);
+                }
+            }
+        }
+
+        // Play audio chunks with parallel pre-fetching for smooth playback
+        async function playChunksParallel(chunks, language) {
+            // Pre-fetch first chunk
+            let nextChunkPromise = fetchAudioChunk(chunks[0], language);
+            
+            for (let i = 0; i < chunks.length; i++) {
+                // Check for interruption
+                if (!isSpeaking || !isActive) {
+                    break;
+                }
+
+                try {
+                    // Wait for current chunk that was already being fetched
+                    const audioBlob = await nextChunkPromise;
+                    
+                    // Start fetching next chunk in parallel while playing current one
+                    if (i + 1 < chunks.length) {
+                        nextChunkPromise = fetchAudioChunk(chunks[i + 1], language);
+                    }
+                    
+                    // Play current chunk (next chunk is being fetched in background)
+                    if (audioBlob && isSpeaking) {
+                        await playAudio(audioBlob);
+                    }
+                } catch (error) {
+                    console.error('Chunk error:', error);
+                    break;
+                }
+            }
+
+            // Finish speaking and wait before resuming listening
+            isSpeaking = false;
+            if (isActive && !isListening) {
+                updateStatus('', 'Ready to listen...');
+                setTimeout(() => {
+                    if (!isSpeaking && !isListening) {
+                        startListening();
+                    }
+                }, 800);
+            }
+        }
+
+        // Helper function to fetch audio chunk
+        async function fetchAudioChunk(text, language) {
+            const response = await fetch('/api/generate-voice', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ text: text, language: language })
+            });
+            
+            if (response.ok) {
+                return await response.blob();
+            }
+            return null;
+        }
+
+        // Play audio with promise
+        function playAudio(audioBlob) {
+            return new Promise((resolve, reject) => {
+                // Check if we should still be speaking
+                if (!isSpeaking || !isActive) {
+                    resolve();
+                    return;
+                }
+
+                const audioUrl = URL.createObjectURL(audioBlob);
+                const audio = new Audio(audioUrl);
+                currentAudio = audio;
+
+                audio.onended = function() {
+                    URL.revokeObjectURL(audioUrl);
+                    currentAudio = null;
+                    resolve();
+                };
+
+                audio.onerror = function(error) {
+                    URL.revokeObjectURL(audioUrl);
+                    currentAudio = null;
+                    reject(error);
+                };
+
+                // Monitor for interruption during playback
+                const checkInterruption = setInterval(() => {
+                    if (!isSpeaking || !isActive) {
+                        clearInterval(checkInterruption);
+                        if (audio) {
+                            audio.pause();
+                            audio.currentTime = 0;
+                        }
+                        URL.revokeObjectURL(audioUrl);
+                        currentAudio = null;
+                        resolve();
+                    }
+                }, 100);
+
+                audio.play().catch(reject);
+            });
+        }
+
+        // Show error
+        function showError(message) {
+            const errorDiv = document.getElementById('errorMessage');
+            errorDiv.textContent = message;
+            errorDiv.style.display = 'block';
+            setTimeout(() => {
+                errorDiv.style.display = 'none';
+            }, 5000);
+        }
+
+        // Clear conversation
+        function clearConversation() {
+            conversationHistory = [];
+            const container = document.getElementById('conversationHistory');
+            container.innerHTML = '<div style="color: #999; padding: 20px;">Session cleared. Ready for a fresh start!</div>';
+        }
+
+        // Event listeners
+        document.getElementById('startBtn').addEventListener('click', startAgent);
+        document.getElementById('stopBtn').addEventListener('click', stopAgent);
+        document.getElementById('clearBtn').addEventListener('click', clearConversation);
+
+        // Initialize
+        window.onload = function() {
+            initSpeechRecognition();
+        };
+    </script>
+</body>
+</html>
