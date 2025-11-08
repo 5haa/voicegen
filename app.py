@@ -239,7 +239,7 @@ def chat_with_gemini():
     # Check if Gemini is configured
     if not GEMINI_API_KEY:
         return jsonify({
-            'error': 'Gemini API key not configured. Please check your .env file.'
+            'error': 'Gemini API key not configured. Please check your environment variables in Railway.'
         }), 500
     
     # Get request data
@@ -334,7 +334,13 @@ Remember: For word lists, add LONG pauses (..........) between words. For normal
         })
         
     except Exception as e:
-        return jsonify({'error': f'Gemini API error: {str(e)}'}), 500
+        error_details = {
+            'error': f'Gemini API error: {str(e)}',
+            'error_type': type(e).__name__,
+            'gemini_configured': bool(GEMINI_API_KEY)
+        }
+        print(f"[ERROR] Gemini API Error: {str(e)}")  # Log to Railway console
+        return jsonify(error_details), 500
 
 
 @app.route('/api/health', methods=['GET'])
@@ -351,20 +357,34 @@ def health_check():
 
 if __name__ == '__main__':
     # Check if credentials are configured
+    print("\n" + "="*50)
+    print("ENVIRONMENT CHECK")
+    print("="*50)
+    
     if not CLOUDFLARE_ACCOUNT_ID or not CLOUDFLARE_API_TOKEN:
-        print("\n[!] WARNING: Cloudflare credentials not found!")
-        print("Please copy .env.example to .env and add your credentials.\n")
+        print("[!] WARNING: Cloudflare credentials not found!")
+        print("Please set CLOUDFLARE_ACCOUNT_ID and CLOUDFLARE_API_TOKEN environment variables.\n")
     else:
-        print("\n[OK] Cloudflare credentials found!")
+        print("[OK] Cloudflare credentials found!")
         print(f"[*] Account ID: {CLOUDFLARE_ACCOUNT_ID[:8]}...")
         print(f"[*] API Token: {CLOUDFLARE_API_TOKEN[:8]}...\n")
+    
+    if not GEMINI_API_KEY:
+        print("[!] WARNING: Gemini API key not found!")
+        print("Please set GEMINI_API_KEY environment variable.\n")
+    else:
+        print("[OK] Gemini API key found!")
+        print(f"[*] API Key: {GEMINI_API_KEY[:8]}...\n")
     
     # Use PORT from environment variable (Railway/Heroku) or default to 5000 for local
     port = int(os.getenv('PORT', 5000))
     debug_mode = os.getenv('FLASK_ENV') != 'production'
     
     print("[*] Starting Real-Time Voice Generation Server...")
-    print(f"[*] Running on port {port}\n")
+    print(f"[*] Port: {port}")
+    print(f"[*] Debug Mode: {debug_mode}")
+    print(f"[*] Environment: {os.getenv('FLASK_ENV', 'development')}")
+    print("="*50 + "\n")
     
     app.run(debug=debug_mode, host='0.0.0.0', port=port)
 
